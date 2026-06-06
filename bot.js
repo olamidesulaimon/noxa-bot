@@ -5,7 +5,9 @@ const fetch = require("node-fetch");
 const TELEGRAM_TOKEN = "8607779232:AAEegVIc8HWKKJmc2z4W8dvSuVkvtZweOmE";
 const GROQ_API_KEY   = "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";
 
-const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+const bot = new TelegramBot(TELEGRAM_TOKEN, {
+  polling: { interval: 2000, autoStart: true, params: { timeout: 10 } }
+});
 
 // ── Pocket Option Assets ──────────────────────────────────────────────────────
 const ASSETS = {
@@ -47,13 +49,13 @@ function chunk(arr, n) {
 }
 
 function categoryKeyboard() {
-  return { inline_keyboard: chunk(Object.keys(ASSETS), 2).map(row => row.map(c => ({ text: c, callback_data: `cat:${c}` }))) };
+  return { inline_keyboard: chunk(Object.keys(ASSETS), 2).map(row => row.map(c => ({ text: c, callback_data: cat:${c} }))) };
 }
 
 function assetKeyboard(cat) {
   return {
     inline_keyboard: [
-      ...chunk(ASSETS[cat] || [], 2).map(row => row.map(a => ({ text: a, callback_data: `asset:${a}` }))),
+      ...chunk(ASSETS[cat] || [], 2).map(row => row.map(a => ({ text: a, callback_data: asset:${a} }))),
       [{ text: "⬅️ Back", callback_data: "back:cat" }]
     ]
   };
@@ -62,7 +64,7 @@ function assetKeyboard(cat) {
 function expiryKeyboard() {
   return {
     inline_keyboard: [
-      ...chunk(EXPIRIES, 4).map(row => row.map(e => ({ text: e, callback_data: `expiry:${e}` }))),
+      ...chunk(EXPIRIES, 4).map(row => row.map(e => ({ text: e, callback_data: expiry:${e} }))),
       [{ text: "⬅️ Back", callback_data: "back:asset" }]
     ]
   };
@@ -80,7 +82,7 @@ function confirmKeyboard() {
 // ── Format Signal ─────────────────────────────────────────────────────────────
 function bar(pct) {
   const f = Math.round(pct / 10);
-  return "█".repeat(f) + "░".repeat(10 - f) + ` ${pct}%`;
+  return "█".repeat(f) + "░".repeat(10 - f) +  ${pct}%;
 }
 
 function formatSignal(d) {
@@ -89,7 +91,7 @@ function formatSignal(d) {
   const arrow  = isCall ? "▲" : "▼";
   const risk   = d.risk === "Low" ? "🟢 Low" : d.risk === "High" ? "🔴 High" : "🟡 Medium";
 
-  return `${emoji} *NOXA AI SIGNAL*
+  return ${emoji} *NOXA AI SIGNAL*
 
 ━━━━━━━━━━━━━━━━━━━
 *${arrow} ${d.signal}* · ${d.asset}
@@ -119,7 +121,7 @@ ${d.analysis}
 ${d.edge}
 
 ━━━━━━━━━━━━━━━━━━━
-_Powered by NOXA AI · Pocket Option_`;
+_Powered by NOXA AI · Pocket Option_;
 }
 
 // ── Groq AI Analysis ──────────────────────────────────────────────────────────
@@ -133,7 +135,6 @@ Pair: ${asset} | Expiry: ${expiry}
 ${isOTC ? "This is an OTC pair available 24/7." : ""}
 
 Based on your knowledge of ${clean} price behavior, technical patterns, and current market conditions, generate a realistic binary options signal.
-
 Return ONLY valid JSON, no extra text:
 {
   "asset": "${asset}",
@@ -150,13 +151,13 @@ Return ONLY valid JSON, no extra text:
   "resistance": "key resistance price level",
   "analysis": "2-3 sentence sharp market analysis with specific price context",
   "edge": "one specific tactical insight for this trade"
-}`;
+};
 
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${GROQ_API_KEY}`
+      "Authorization": Bearer ${GROQ_API_KEY}
     },
     body: JSON.stringify({
       model: "llama-3.3-70b-versatile",
@@ -195,13 +196,13 @@ bot.onText(/\/start/, (msg) => {
   sessions[chatId] = { step: "idle", asset: null, expiry: null, cat: null };
 
   bot.sendMessage(chatId,
-    `👋 Welcome, *${name}\\!*\n\n` +
-    `🤖 *NOXA AI* — Pocket Option Signal Bot\n\n` +
-    `I generate AI\\-powered *CALL/PUT signals* for your Pocket Option trades\\.\n\n` +
-    `*Commands:*\n` +
-    `/analyze — Get a new signal\n` +
-    `/help — How to use\n\n` +
-    `Tap below to start 👇`,
+    👋 Welcome, *${name}\\!*\n\n +
+    🤖 *NOXA AI* — Pocket Option Signal Bot\n\n +
+    I generate AI\\-powered *CALL/PUT signals* for your Pocket Option trades\\.\n\n +
+    *Commands:*\n +
+    /analyze — Get a new signal\n +
+    /help — How to use\n\n +
+    Tap below to start 👇,
     {
       parse_mode: "MarkdownV2",
       reply_markup: { inline_keyboard: [[{ text: "⚡ Get Signal Now", callback_data: "start:analyze" }]] }
@@ -220,20 +221,20 @@ bot.onText(/\/analyze/, (msg) => {
 
 bot.onText(/\/help/, (msg) => {
   bot.sendMessage(msg.chat.id,
-    `📖 *NOXA AI Help*\n\n` +
-    `*How to get a signal:*\n` +
-    `1️⃣ /analyze\n` +
-    `2️⃣ Choose category\n` +
-    `3️⃣ Select pair\n` +
-    `4️⃣ Choose expiry\n` +
-    `5️⃣ Get CALL or PUT signal\n\n` +
-    `*Categories:*\n` +
-    `• 📈 Forex — 20 pairs\n` +
-    `• 🌙 Forex OTC — 24/7 pairs\n` +
-    `• ₿ Crypto — BTC ETH etc\n` +
-    `• 🥇 Commodities — Gold Silver Oil\n` +
-    `• 📊 Indices — US500 NASDAQ etc\n\n` +
-    `⚠️ _Always use risk management\\._`,
+    📖 *NOXA AI Help*\n\n +
+    *How to get a signal:*\n +
+    1️⃣ /analyze\n +
+    2️⃣ Choose category\n +
+    3️⃣ Select pair\n +
+    4️⃣ Choose expiry\n +
+    5️⃣ Get CALL or PUT signal\n\n +
+    *Categories:*\n +
+    • 📈 Forex — 20 pairs\n +
+    • 🌙 Forex OTC — 24/7 pairs\n +
+    • ₿ Crypto — BTC ETH etc\n +
+    • 🥇 Commodities — Gold Silver Oil\n +
+    • 📊 Indices — US500 NASDAQ etc\n\n +
+    ⚠️ _Always use risk management\\._,
     { parse_mode: "Markdown" }
   );
 });
@@ -258,16 +259,15 @@ bot.on("callback_query", async (query) => {
   if (data.startsWith("cat:")) {
     sess.cat  = data.replace("cat:", "");
     sess.step = "select_asset";
-    return bot.editMessageText(`📂 *${sess.cat}*\n\nSelect your pair:`, {
+    return bot.editMessageText(📂 *${sess.cat}*\n\nSelect your pair:`, {
       chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
       reply_markup: assetKeyboard(sess.cat)
     });
   }
-
-  if (data.startsWith("asset:")) {
+if (data.startsWith("asset:")) {
     sess.asset = data.replace("asset:", "");
     sess.step  = "select_expiry";
-    return bot.editMessageText(`✅ Pair: *${sess.asset}*\n\n⏱ Select expiry:`, {
+    return bot.editMessageText(✅ Pair: *${sess.asset}*\n\n⏱ Select expiry:, {
       chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
       reply_markup: expiryKeyboard()
     });
@@ -277,7 +277,7 @@ bot.on("callback_query", async (query) => {
     sess.expiry = data.replace("expiry:", "");
     sess.step   = "confirm";
     return bot.editMessageText(
-      `🎯 *Ready to Analyze*\n\n• Pair: *${sess.asset}*\n• Expiry: *${sess.expiry}*\n\nTap to run NOXA AI ⚡`,
+      🎯 *Ready to Analyze*\n\n• Pair: *${sess.asset}*\n• Expiry: *${sess.expiry}*\n\nTap to run NOXA AI ⚡,
       { chat_id: chatId, message_id: msgId, parse_mode: "Markdown", reply_markup: confirmKeyboard() }
     );
   }
@@ -292,7 +292,7 @@ bot.on("callback_query", async (query) => {
 
   if (data === "back:asset") {
     sess.step = "select_asset";
-    return bot.editMessageText(`📂 *${sess.cat}*\n\nSelect your pair:`, {
+    return bot.editMessageText(📂 *${sess.cat}*\n\nSelect your pair:, {
       chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
       reply_markup: assetKeyboard(sess.cat)
     });
@@ -300,7 +300,7 @@ bot.on("callback_query", async (query) => {
 
   if (data === "back:expiry") {
     sess.step = "select_expiry";
-    return bot.editMessageText(`✅ Pair: *${sess.asset}*\n\n⏱ Select expiry:`, {
+    return bot.editMessageText(✅ Pair: *${sess.asset}*\n\n⏱ Select expiry:, {
       chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
       reply_markup: expiryKeyboard()
     });
@@ -308,7 +308,7 @@ bot.on("callback_query", async (query) => {
 
   if (data === "confirm:analyze") {
     await bot.editMessageText(
-      `🔍 *Analyzing ${sess.asset}...*\n\n🧠 NOXA AI is processing\n⏳ Please wait 10\\-15 seconds\\.\\.\\.`,
+      🔍 *Analyzing ${sess.asset}...*\n\n🧠 NOXA AI is processing\n⏳ Please wait 10\\-15 seconds\\.\\.\\.,
       { chat_id: chatId, message_id: msgId, parse_mode: "MarkdownV2" }
     );
 
@@ -331,7 +331,7 @@ bot.on("callback_query", async (query) => {
         });
       }
     } catch (err) {
-      await bot.editMessageText(`❌ Error: ${err.message}`, {
+      await bot.editMessageText(❌ Error: ${err.message}, {
         chat_id: chatId, message_id: msgId,
         reply_markup: { inline_keyboard: [[{ text: "🔄 Retry", callback_data: "confirm:analyze" }]] }
       });
@@ -339,4 +339,8 @@ bot.on("callback_query", async (query) => {
   }
 });
 
-console.log("🤖 NOXA AI Bot is running... (Powered by Groq - FREE)");
+// Suppress verbose polling errors from flooding logs
+bot.on("polling_error", () => {});
+bot.on("error", () => {});
+
+console.log("NOXA AI Bot started.");
