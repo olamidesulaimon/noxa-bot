@@ -271,6 +271,5 @@ bot.on("callback_query", async (query) => {
     }
   }
 });
-console.log("NOXA AI Bot running.");
 
 console.log("NOXA AI Bot running.");
