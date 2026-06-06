@@ -4,6 +4,7 @@ const https = require("https");
 // ── CONFIG — PASTE YOUR KEYS HERE ─────────────────────────────────────────────
 const TELEGRAM_TOKEN = "8607779232:AAEegVIc8HWKKJmc2z4W8dvSuVkvtZweOmE";
 const GROQ_API_KEY   = "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";
+const CHANNEL_ID     = "-1003700445826";
 // ──────────────────────────────────────────────────────────────────────────────
 
 const bot = new TelegramBot(TELEGRAM_TOKEN, {
@@ -61,7 +62,7 @@ function httpsPost(hostname, path, headers, body) {
 
 // ── Groq call ─────────────────────────────────────────────────────────────────
 async function runAnalysis(asset, expiry) {
-  const prompt = `You are NOXA, a professional binary options analyst for Pocket Option.
+  const prompt = You are NOXA, a professional binary options analyst for Pocket Option.
 Pair: ${asset} | Expiry: ${expiry}
 ${asset.includes("OTC") ? "OTC pair — available 24/7." : ""}
 
@@ -82,14 +83,14 @@ Return ONLY valid JSON, no extra text, no markdown:
   "resistance": "resistance price",
   "analysis": "2-3 sentence market analysis",
   "edge": "one tactical insight for this trade"
-}`;
+};
 
   const result = await httpsPost(
     "api.groq.com",
     "/openai/v1/chat/completions",
     {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${GROQ_API_KEY}`
+      "Authorization": Bearer ${GROQ_API_KEY}
     },
     {
       model: "llama-3.3-70b-versatile",
@@ -108,16 +109,15 @@ Return ONLY valid JSON, no extra text, no markdown:
     return m ? JSON.parse(m[0]) : null;
   }
 }
-
 // ── Keyboards ─────────────────────────────────────────────────────────────────
 function chunk(arr, n) {
   const r = [];
   for (let i = 0; i < arr.length; i += n) r.push(arr.slice(i, i + n));
   return r;
 }
-const catKB = () => ({ inline_keyboard: chunk(Object.keys(ASSETS), 2).map(row => row.map(c => ({ text: c, callback_data: `cat:${c}` }))) });
-const assetKB = (cat) => ({ inline_keyboard: [...chunk(ASSETS[cat]||[], 2).map(row => row.map(a => ({ text: a, callback_data: `asset:${a}` }))), [{ text: "⬅️ Back", callback_data: "back:cat" }]] });
-const expiryKB = () => ({ inline_keyboard: [...chunk(EXPIRIES, 4).map(row => row.map(e => ({ text: e, callback_data: `expiry:${e}` }))), [{ text: "⬅️ Back", callback_data: "back:asset" }]] });
+const catKB = () => ({ inline_keyboard: chunk(Object.keys(ASSETS), 2).map(row => row.map(c => ({ text: c, callback_data: cat:${c} }))) });
+const assetKB = (cat) => ({ inline_keyboard: [...chunk(ASSETS[cat]||[], 2).map(row => row.map(a => ({ text: a, callback_data: asset:${a} }))), [{ text: "⬅️ Back", callback_data: "back:cat" }]] });
+const expiryKB = () => ({ inline_keyboard: [...chunk(EXPIRIES, 4).map(row => row.map(e => ({ text: e, callback_data: expiry:${e} }))), [{ text: "⬅️ Back", callback_data: "back:asset" }]] });
 const confirmKB = () => ({ inline_keyboard: [[{ text: "⚡ Run NOXA Analysis", callback_data: "confirm:analyze" }], [{ text: "🔄 Change Pair", callback_data: "back:cat" }, { text: "🕒 Change Expiry", callback_data: "back:expiry" }]] });
 const retryKB = () => ({ inline_keyboard: [[{ text: "🔄 Retry", callback_data: "confirm:analyze" }], [{ text: "📂 New Pair", callback_data: "back:cat" }]] });
 
@@ -130,12 +130,14 @@ function bar(pct) {
 function formatSignal(d) {
   const isCall = d.signal === "CALL";
   const emoji = isCall ? "🟢" : "🔴";
-  const arrow = isCall ? "▲" : "▼";
+  const arrow = isCall ? "📈" : "📉";
+  const direction = isCall ? "HIGHER ⬆️  |  BUY" : "LOWER ⬇️  |  SELL";
   const risk = d.risk === "Low" ? "🟢 Low" : d.risk === "High" ? "🔴 High" : "🟡 Medium";
   return (
     emoji + " *NOXA AI SIGNAL*\n\n" +
     "━━━━━━━━━━━━━━━━━━━\n" +
-    "*" + arrow + " " + d.signal + "* · " + d.asset + "\n" +
+    arrow + " *" + direction + "*\n" +
+    "💱 Pair: *" + d.asset + "*\n" +
     "⏱ Expiry: *" + d.expiry + "*\n" +
     "💰 Price: *" + d.price + "*\n" +
     "━━━━━━━━━━━━━━━━━━━\n\n" +
@@ -194,7 +196,6 @@ bot.on("callback_query", async (query) => {
   const data   = query.data;
   const sess   = getSession(chatId);
   await bot.answerCallbackQuery(query.id);
-
   if (data === "start:analyze" || data === "back:cat") {
     sess.step = "select_cat";
     return bot.editMessageText("📂 *Select Asset Category:*", { chat_id: chatId, message_id: msgId, parse_mode: "Markdown", reply_markup: catKB() });
@@ -220,21 +221,56 @@ bot.on("callback_query", async (query) => {
     return bot.editMessageText("✅ Pair: *" + sess.asset + "*\n\n⏱ Select expiry:", { chat_id: chatId, message_id: msgId, parse_mode: "Markdown", reply_markup: expiryKB() });
   }
   if (data === "confirm:analyze") {
+    // Step 1 — tell user bot is working
     await bot.editMessageText("🔍 Analyzing *" + sess.asset + "*...\n\n🧠 NOXA AI is processing\n⏳ Please wait 10-15 seconds...", { chat_id: chatId, message_id: msgId, parse_mode: "Markdown" });
+
+    // Step 1 — send SETUP ALERT to channel so members get ready
+    let channelAlertId = null;
+    try {
+      const alertMsg = await bot.sendMessage(CHANNEL_ID,
+        "🔔 *SIGNAL INCOMING*\n\n" +
+        "━━━━━━━━━━━━━━━━━━━\n" +
+        "📊 Pair: *" + sess.asset + "*\n" +
+        "⏱ Expiry: *" + sess.expiry + "*\n" +
+        "━━━━━━━━━━━━━━━━━━━\n\n" +
+        "🧠 NOXA AI is analyzing the market...\n" +
+        "⏳ *Confirmation signal coming in 15 seconds*\n\n" +
+        "_Get ready to trade!_ 👀",
+        { parse_mode: "Markdown" }
+      );
+      channelAlertId = alertMsg.message_id;
+    } catch (e) {}
+
     try {
       const result = await runAnalysis(sess.asset, sess.expiry);
       if (result) {
+        // Send full signal to user
         await bot.editMessageText(formatSignal(result), {
           chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
           reply_markup: { inline_keyboard: [[{ text: "🔄 Analyze Again", callback_data: "confirm:analyze" }], [{ text: "📂 New Pair", callback_data: "back:cat" }, { text: "⏱ New Expiry", callback_data: "back:expiry" }]] }
         });
+        // Step 2 — send CONFIRMATION SIGNAL to channel
+        try {
+          const isCall = result.signal === "CALL";
+          const header = isCall
+            ? "✅ *CONFIRMATION — ENTER NOW*"
+            : "✅ *CONFIRMATION — ENTER NOW*";
+          await bot.sendMessage(CHANNEL_ID,
+            header + "\n\n" + formatSignal(result),
+            { parse_mode: "Markdown" }
+          );
+        } catch (e) {
+          await bot.sendMessage(chatId, "⚠️ Could not post signal to channel. Make sure Juliebot is admin.");
+        }
       } else {
         await bot.editMessageText("⚠️ Could not generate signal. Please retry.", { chat_id: chatId, message_id: msgId, reply_markup: retryKB() });
+        try { await bot.sendMessage(CHANNEL_ID, "⚠️ Signal analysis failed. Please wait for next signal.", {}); } catch(e) {}
       }
     } catch (err) {
       await bot.editMessageText("❌ Error: " + err.message + "\n\nPlease retry.", { chat_id: chatId, message_id: msgId, reply_markup: retryKB() });
     }
   }
 });
+console.log("NOXA AI Bot running.");
 
 console.log("NOXA AI Bot running.");
