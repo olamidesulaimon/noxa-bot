@@ -4,7 +4,6 @@ const https = require("https");
 // ── CONFIG — PASTE YOUR KEYS HERE ────────────────────────────────────────────
 const TELEGRAM_TOKEN = "8607779232:AAEegVIc8HWKKJmc2z4W8dvSuVkvtZweOmE";
 const GROQ_API_KEY   = "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";
-const CHANNEL_ID     = "-1003700445826";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const bot = new TelegramBot(TELEGRAM_TOKEN, {
